@@ -20,4 +20,8 @@ FROM base AS final
 ENV ASPNETCORE_URLS=http://0.0.0.0:5100
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "TeamRadio.dll"]
+COPY envvarcheckandstartapp.sh /app/envvarcheckandstartapp.sh
+USER root
+RUN chmod +x /app/envvarcheckandstartapp.sh
+USER $APP_UID
+ENTRYPOINT ["/app/envvarcheckandstartapp.sh"]
