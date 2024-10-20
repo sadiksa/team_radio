@@ -1,0 +1,517 @@
+﻿@{
+    @model (List<TeamRadio.Models.Video> videos, int startingSecond)
+}
+<div id="app" class="text-light">
+    <audio id="beep-sound" src="/level-up-191997.mp3" preload="auto"></audio>
+    <div class="d-flex justify-content-center align-items-center flex-column mt-4">
+        <div class="d-flex justify-content-center align-items-center mt-4">
+            <div class="text-center">
+                <img src="@Environment.GetEnvironmentVariable("LOGO_URL")" style="min-height: 100px" alt="Radio Image" class="img-fluid"/>
+            </div>
+            <div class="text-center">
+                <h2 class="text-dark">Radio</h2>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div :style="{ backgroundColor: blueColor }" class="col d-flex justify-content-center align-items-center m-5 p-5 flex-column border rounded" style="max-height:600px">
+                <div class="w-100">
+                    <h2 class="text-dark">Now Playing: {{currentVideoTitle}}</h2>
+                    <youtube-player v-if="showPlayer" ref="youtubePlayer" :video-id="currentVideoId" 
+                                    :command="playerCommand" :starting-second="startingSecond"
+                                    :muted="muted" :volume="volume"
+                                    @@video-ended="handleVideoEnded"></youtube-player>
+                    <div v-else class="d-flex justify-content-center">
+                        <div class="spinner-grow text-primary" role="status">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 w-100 overflow-auto" style="height: 300px">
+                    <h3 class="border-bottom border-dark pb-1 mb-1 text-dark">Playlist</h3>
+                    <ul>
+                        <li v-for="(video, index) in videoList" :key="video" :class="{ 'current': currentVideoIndex === index }">
+                            {{ video.title }}
+                        </li>
+                        <li v-if="videoList.length === 0">No Video</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div :style="{ backgroundColor: purpleColor }" class="col chat m-5 p-5 border rounded">
+                <h3 class="text-dark">Chat</h3>
+                <div class="chat-messages w-100 overflow-auto m-4 pb-5" style="height: 200px">
+                    <div class="mb-1" v-for="(messageObj, index) in chatMessages" :key="index">
+                        <span :class="['m-1', 'badge', messageObj.badgeColor]">{{ messageObj.username }}</span><span class="align-middle">{{ messageObj.message }}</span>
+                    </div>
+                </div>
+
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" v-model="chatInput" @@keyup.enter="sendMessage" placeholder="Type a message or command" aria-label="Recipient's username" aria-describedby="button-addon2">
+                    <button @@click="sendMessage" class="btn btn-primary" type="button" id="button-addon2">Send</button>
+                </div>
+
+                <form class="form-inline mt-2">
+                    <div class="input-group mb-2 mr-sm-2">
+                        <div class="input-group-prepend">
+                            <div class="input-group-text">Username</div>
+                        </div>
+                        <input v-model="username" @@input="saveUserText" type="text" class="form-control" id="inlineFormInputGroupUsername2" placeholder="Username">
+                    </div>
+                    <div class="form-check mb-2 mr-sm-2">
+                        <input v-model="beepSoundOpen" class="form-check-input" type="checkbox" id="beep">
+                        <label class="form-check-label" for="beep">
+                            Beep Sound
+                        </label>
+                    </div>
+                    <div class="form-check mb-2 mr-sm-2" id="mute-area">
+                        <input v-model="muted" @@click="toggleMute" class="form-check-input" type="checkbox" id="muted">
+                        <label class="form-check-label" for="muted">
+                            Muted
+                        </label>
+                    </div>
+                    <div class="form-check mb-2 mr-sm-2">
+                        <label for="volume" class="form-label">Volume</label>
+                        <input v-model="volume" @@input="saveVolume" type="range" class="form-range" min="0" max="100" step="5" id="volume">
+                    </div>
+                </form>
+
+                <div class="mt-4">
+                    <h4 class="text-dark">Commands</h4>
+                    <ul>
+                        <li>add(a) [youtube-url] - Add a video to the playlist.</li>
+                        <li>addList(al) [youtube-playlist-url] - Add a playlist to the playlist.</li>
+                        <li>playNext(pn) - Play the next video in the playlist.</li>
+                        <li>deleteAll(da) - Delete all videos in the playlist.</li>
+                        <li>---</li>
+                        <li>Anything else is taken as a message.</li>
+                        <li>Youtube music links work also.</li>
+                    </ul>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+    const driver = window.driver.js.driver;
+
+    const driverObj = driver();
+
+    const { createApp, ref } = Vue
+
+    const YouTubePlayer = {
+        props: ['videoId', 'command', 'startingSecond', 'muted', 'volume'],
+        template: `
+        <div class="d-flex justify-content-center align-items-center youtube-player">
+            <div id="player"></div>
+            <div class="yt-overlay"></div>
+        </div>
+      `,
+        setup() {
+        const player = ref(null);
+        },
+        methods: {
+            setupPlayer() {
+                        
+                if (this.player) {
+                    this.player.loadVideoById({
+                        videoId: this.videoId,
+                        startSeconds: this.startingSecond
+                    });
+                    
+                    if (this.muted) {
+                        this.player.mute();
+                    }
+                    else {
+                        this.player.unMute();
+                    }
+                    
+                    this.player.setVolume(this.volume);
+                }
+                else {
+                    this.player = new YT.Player('player', {
+                        events: {
+                            'onStateChange': this.onPlayerStateChange
+                        },
+                        'height': '100',
+                        'width': '200',
+                        'videoId': this.videoId,
+                        playerVars: {
+                            'start': this.startingSecond,
+                            'disablekb': 1,
+                            'controls': 0,
+                            'autoplay': 1,
+                            'mute': this.muted ? 1 : 0,
+                            'volume': this.volume
+                        }
+                    });
+                }
+            },
+            onPlayerStateChange(event) {
+                if (event.data === 0) {
+                    this.$emit('video-ended');
+                }
+            },
+            getCurrentTime() {
+                if (this.player) {
+                    return this.player.getCurrentTime();
+                }
+                return 0;
+            },
+            executeCommand() {
+                if (!this.player) return;
+                switch (this.command) {
+                    case 'play':
+                        this.player.playVideo();
+                        break;
+                    case 'pause':
+                        this.player.pauseVideo();
+                        break;
+                    case 'mute':
+                        this.player.mute();
+                        break;
+                    case 'unmute':
+                        this.player.unMute();
+                        break;
+                }
+            }
+        },
+        mounted() {
+            this.setupPlayer();
+        },
+        watch: {
+            videoId() {
+                this.setupPlayer();
+            },
+            command() {
+                this.executeCommand();
+            },
+            volume() {
+                if (this.player) {
+                    this.player.setVolume(this.volume);
+                }
+            },
+        }
+    };
+
+    createApp({
+        components: {
+            'youtube-player': YouTubePlayer
+        },
+        setup() {
+            const amIOrigin = ref(false);
+            const blueColor = ref('@Environment.GetEnvironmentVariable("PLAYER_COLOR")');
+            const purpleColor = ref('@Environment.GetEnvironmentVariable("CHAT_COLOR")');
+            const badgeColors = ref(['bg-secondary', 'bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'bg-dark']);
+            const videoList = ref(@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.videos)));
+            const currentVideoIndex = ref(0);
+            const showPlayer = ref(false);
+            const currentVideoId = ref(videoList.value && videoList.value.length > 0 ? videoList.value[currentVideoIndex.value].videoId : '');
+            const currentVideoTitle = ref(videoList.value && videoList.value.length > 0 ? videoList.value[currentVideoIndex.value].title : '');
+            const chatMessages = ref([{ username: 'System', message: 'Welcome to the @Environment.GetEnvironmentVariable("COMPANY_NAME") radio!', badgeColor: 'bg-primary' }]);
+            const chatInput = ref('');
+            const username = ref('');
+            const youtubeApiKey = '@Environment.GetEnvironmentVariable("YOUTUBE_API_KEY")';
+            const beepSoundOpen = ref(true);
+            const muted = ref(true);
+            const playerCommand = ref('');
+            const startingSecond = @Model.startingSecond;
+            const volume = ref(100);
+
+            return {
+                amIOrigin,
+                blueColor,
+                purpleColor,
+                videoList,
+                currentVideoId,
+                currentVideoIndex,
+                currentVideoTitle,
+                showPlayer,
+                chatMessages,
+                chatInput,
+                badgeColors,
+                username,
+                youtubeApiKey,
+                beepSoundOpen,
+                muted,
+                playerCommand,
+                startingSecond,
+                volume
+            }
+        },
+        mounted() {
+            this.username = localStorage.getItem('username') || '';
+            this.volume = localStorage.getItem('volume') || 100;
+
+            var tag = document.createElement('script');
+
+            tag.src = "https://www.youtube.com/iframe_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+            setTimeout(() => {
+                // if there is a video, show the player
+                if (this.currentVideoId){
+                    this.showPlayer = true;
+                    driverObj.highlight({
+                        element: "#mute-area",
+                        popover: {
+                            title: "Cause of browser policies",
+                            description: "Please unmute the video manually.",
+                        }
+                    });
+                }
+            }, 1000);
+
+            // Set up SignalR connection
+            this.openConnection();            
+        },
+        methods: {
+            openConnection(){
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/chatHub")
+                    .build();
+
+                connection.on("PlayNext", (response) => {
+                    if (response) {
+                        this.addMessage(response.username,`played next video ${response.videoItem.title}`);
+                        this.playNextVideo(response.videoItem);
+                    }
+                    else {}
+                });
+
+                connection.on("DeleteAll", (response) => {
+                    this.addMessage(response.username, 'deleted all videos');
+                    this.deleteAllVideos();
+                });
+
+                connection.on("ReceiveVideoId", (response) => {
+                    this.addMessage(response.username,`added video ${response.videoItem.title}`);
+                    this.addVideo(response.videoItem);
+                });
+
+                connection.on("ReceiveMessage", (response) => {
+                    this.addMessage(response.username, response.message);
+                });
+
+                connection.on("AmIOrigin", () => {
+                    this.amIOrigin = true;
+                });
+
+                connection.on("RequestCurrentSecond", () => {
+                    this.callCurrentSecond();
+                });
+
+                connection.start().catch(err => console.error(err.toString()));
+
+                // Expose connection to Vue instance
+                this.connection = connection;
+            },
+            sendCommand(command) {
+                this.playerCommand = command;
+            },
+            toggleMute(){
+                this.muted = !this.muted;
+                // new value
+                if (this.muted){
+                    this.sendCommand('mute');
+                }else{
+                    this.sendCommand('unmute');
+                }
+            },
+            saveUserText() {
+                localStorage.setItem('username', this.username);
+            },
+            saveVolume() {
+                localStorage.setItem('volume', this.volume);
+            },
+            addMessage(username, message) {
+            // if a user has a badge color already, use it. Otherwise, assign a new one
+            let badgeColor = this.chatMessages.find(msg => msg.username === username)?.badgeColor;
+            if (!badgeColor) {
+                // random badge color
+                badgeColor = this.badgeColors[Math.floor(Math.random() * this.badgeColors.length)];
+            }
+            this.chatMessages.push({ username, message, badgeColor });
+            if (this.beepSoundOpen){
+                document.getElementById('beep-sound').play();
+            }
+            const chatContainer = document.querySelector('.chat-messages');
+            chatContainer.scrollTop = chatContainer.scrollHeight;  
+            },
+            playNextVideo(videoItem) {
+                // reset starting second
+                this.startingSecond = 0;
+                // find index of videoId
+                const index = this.videoList.findIndex(video => video.videoId === videoItem.videoId);
+                // if not found, showPlayer = false
+                if (index === -1) {
+                    this.showPlayer = false;
+                    return;
+                }
+                
+                this.showPlayer = true;
+                // delete until index
+                this.videoList.splice(0, index);
+                // set current video index
+                this.currentVideoIndex = 0;
+                // set current video id
+                this.currentVideoId = this.videoList[this.currentVideoIndex].videoId;
+                this.currentVideoTitle = this.videoList[this.currentVideoIndex].title;
+            
+            },
+            addVideo(video) {
+                this.videoList.push(video);
+                if (this.videoList.length === 1) {
+                    this.currentVideoId = video.videoId;
+                    this.currentVideoTitle = video.title;
+                    this.showPlayer = true;
+                }
+    
+            },
+            deleteAllVideos() {
+                this.videoList = [];
+                this.currentVideoIndex = 0;
+                this.currentVideoId = '';
+                this.currentVideoTitle = '';
+                this.showPlayer = false;
+                this.startingSecond = 0;
+            },
+            handleVideoEnded() {
+                if (this.amIOrigin){
+                    this.callNextVideo(true);
+                }
+            },
+            callNextVideo(autoNext = false){
+            
+                // if it is the last video, call deleteAll
+                if (this.currentVideoIndex === this.videoList.length - 1) {
+                    this.callDeleteAll();
+                    return;
+                }
+                this.connection.invoke("PlayNextToAll", {
+                    videoItem : this.videoList[this.currentVideoIndex],
+                    username : this.username,
+                    isAutoNext: autoNext
+                     }).catch(err => console.error(err.toString()));
+            },
+            callAddVideo(video){
+                this.connection.invoke("SendVideoToAll", {
+                    videoItem : video,
+                    username : this.username
+        }).catch(err => console.error(err.toString()));
+            },
+            callAddList(list){
+                this.connection.invoke("SendVideoListToAll", {
+                    videoList : list,
+                    username : this.username
+        }).catch(err => console.error(err.toString()));
+        },
+            callDeleteAll(){
+                this.connection.invoke("DeleteAllToAll", {
+                    username : this.username
+        }).catch(err => console.error(err.toString()));
+            },
+            callSendMessage(message){
+                this.connection.invoke("SendMessageToAll", {
+                    message : message,
+                    username : this.username
+        }).catch(err => console.error(err.toString()));
+        },
+            callCurrentSecond(){
+                const currentTime = this.$refs.youtubePlayer.getCurrentTime();
+                const currentTimeAsInt = Math.floor(currentTime);
+                if(!this.amIOrigin){
+                    return;
+                }
+                this.connection.invoke("SendStartingSecond", {
+                    startingSecond : currentTimeAsInt
+                }).catch(err => console.error(err.toString()));
+            },
+            getYouTubeVideoId(url) {
+                const urlObj = new URL(url);
+                return urlObj.searchParams.get('v');
+            },
+            getPlayListId(url) {
+                const urlObj = new URL(url);
+                return urlObj.searchParams.get('list');
+            },
+            async getVideoDetailsFromYoutube(videoId) {
+                const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${this.youtubeApiKey}`);
+                const data = await response.json();
+                return data.items[0].snippet.title;
+            },
+            async getPlayListDetailsFromYoutube(playlistId) {
+                let videoList = [];
+                let nextPageToken = '';
+                
+                this.addMessage('System', 'Fetching playlist videos. Please wait...');
+
+                do {
+                    const response = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${this.youtubeApiKey}&pageToken=${nextPageToken}`);
+                    const data = await response.json();
+                    videoList = videoList.concat(data.items.map(item => ({
+                        videoId: item.snippet.resourceId.videoId,
+                        title: item.snippet.title
+                    })));
+                    nextPageToken = data.nextPageToken;
+                } while (nextPageToken);
+                
+                this.addMessage('System', 'Playlist videos fetched successfully.');
+
+            return videoList;
+            },
+            async sendMessage() {
+                const message = this.chatInput.trim();
+                if (message) {
+                    this.chatInput = '';
+
+                    if (message.startsWith('add ') || message.startsWith('a ')) {
+                        const url = message.split(' ')[1];
+                        const videoId = this.getYouTubeVideoId(url);
+                        let videoTitle = await this.getVideoDetailsFromYoutube(videoId)
+                        if (videoId) {
+                            this.callAddVideo({
+                                    videoId: videoId,
+                                    title: videoTitle
+                                });
+                        }
+                    } else if (message.startsWith('addList ') || message.startsWith('al ')) {
+                        const url = message.split(' ')[1];
+                        const playlistId = this.getPlayListId(url);
+                        const videoList = await this.getPlayListDetailsFromYoutube(playlistId);
+                        this.callAddList(videoList);
+                    }else if (message === 'playNext' || message === 'pn') {
+                        this.callNextVideo();
+                    } else if (message === 'deleteAll' || message === 'da') {
+                        this.callDeleteAll();
+                    }
+                    else {
+                        this.callSendMessage(message);
+                    }
+                }
+            }
+        }
+    }).mount('#app')
+
+    </script>
+}
+
+<style>
+    .current {
+        font-weight: bold;
+        color: red;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    li {
+        padding: 5px;
+    }
+</style>
