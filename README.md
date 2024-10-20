@@ -13,6 +13,8 @@ TeamRadio is a web application that allows users to share and control a playlist
 - **Automatic Video Progress Tracking**: Track and synchronize the current playback time of the video.
 - **Background Services**: Use background services to manage video playback and synchronization.
 
+  ![teamradio](https://raw.githubusercontent.com/sadiksa/team_radio/refs/heads/master/teamradio_ss1.png)
+
 ## Technologies Used
 
 - **Frontend**: Vue.js
