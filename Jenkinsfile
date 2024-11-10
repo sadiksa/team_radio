@@ -1,8 +1,6 @@
 pipeline {
     agent any
-    tools {
-            msbuild 'MSBuild 2022'
-        }
+    
 	environment {
 		DOCKER_BUILDKIT=1
 		ENVIRONMENT="${ENVIRONMENT}"
@@ -16,8 +14,8 @@ pipeline {
 	    stage("Build") {
             steps {
                     script {
-//                         sh 'dotnet build /property:nowarn=* $PROJECT_PATH -p:PackageVersion=1.0.$BUILD_NUMBER --configuration Release'
-                        sh 'msbuild $SOLUTION_PATH /p:Configuration=Release %MSBUILD_ARGS%'
+                        sh 'dotnet nuget locals all --clear'
+                        sh 'dotnet build /property:nowarn=* $PROJECT_PATH -p:PackageVersion=1.0.$BUILD_NUMBER --configuration Release'
                      }
 
             }
