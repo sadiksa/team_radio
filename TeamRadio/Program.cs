@@ -13,6 +13,13 @@ public class Program
         builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();
         builder.Services.AddHostedService<StartingSecondBackgroundService>(); // Register the background service
+        builder.Services.AddHostedService<MessageConsumerBackgroundService>();
+        builder.Services.AddStackExchangeRedisCache(options =>
+        {
+            options.Configuration = builder.Configuration.GetConnectionString("Redis");
+            options.InstanceName = "TeamRadio_";
+        });
+        builder.Services.AddTransient<RabbitMQService>();
 
 
         var app = builder.Build();

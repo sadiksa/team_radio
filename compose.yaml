@@ -1,0 +1,31 @@
+services:
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: abcdc.5678
+      POSTGRES_DB: teamradiodb
+    volumes:
+#     directory mounted to the container
+      - ./database-data:/var/lib/postgresql/data
+    ports:
+      - "7001:5432"
+        
+  queue:
+    image: rabbitmq:4-management
+    ports:
+      - "7002:5672"
+      - "7003:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: rmquser
+      RABBITMQ_DEFAULT_PASS: abcd.1234
+    volumes:
+      - ./queue-data:/var/lib/rabbitmq/mnesia
+    
+  cache:
+    image: redis/redis-stack:latest
+    ports:
+      - "7004:6379"
+      - "7005:8001"
+    environment:
+      REDIS_ARGS: "--requirepass defg.1234"

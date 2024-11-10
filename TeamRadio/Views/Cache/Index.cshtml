@@ -1,0 +1,17 @@
+@model bool
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Check Cache</title>
+</head>
+<body>
+<div>
+    Cache is @Model
+    <button>
+        <a href="@Url.Action("Toggle", "Cache")">Toggle Cache</a>
+    </button>
+</div>
+</body>
+</html>
