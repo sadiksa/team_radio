@@ -11,15 +11,15 @@ pipeline {
 
 	stages {
 
-// 	    stage("Build") {
-//             steps {
-//                     script {
-//                         sh 'dotnet nuget locals all --clear'
-//                         sh 'dotnet build /property:nowarn=* $PROJECT_PATH -p:PackageVersion=1.0.$BUILD_NUMBER --configuration Release'
-//                      }
-// 
-//             }
-//         }
+	    stage("Build") {
+            steps {
+                    script {
+                        sh 'dotnet nuget locals all --clear'
+                        sh 'dotnet build /property:nowarn=* $PROJECT_PATH -p:PackageVersion=1.0.$BUILD_NUMBER --configuration Release'
+                     }
+
+            }
+        }
         
 		stage("Docker Build & Push") {
             steps {
